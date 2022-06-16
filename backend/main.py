@@ -4,6 +4,7 @@ import requests
 import json
 import pickle as pkl
 from recsys import CFRecommender
+import numpy as np
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -15,17 +16,27 @@ with open('../player_composed.pkl', 'rb') as f:
 
 rec = CFRecommender(player_list, rawid2hero)
 
-@app.route('/most_played', methods=['GET', 'POST'])
-def most_played(): 
-    uid, top_n = request.args.get('uid'), request.args.get('top_n')
+@app.route('/get_result', methods=['GET', 'POST'])
+def get_result(): 
+    uid = request.args.get('uid')
+    top_p, top_r, top_s = int(request.args.get('top_p')), int(request.args.get('top_r')), int(request.args.get('top_s'))
     data = eval(requests.get('https://api.opendota.com/api/players/{}/heroes'.format(uid)).text)
-    preference = sorted(data, key=lambda x: x['games'], reverse=True)[:int(top_n)]
+    if not len(data):
+        res = {
+            "preference": [],
+            "recommended_heroes": [],
+            "similar_players": [],
+        }
+        return Response(json.dumps(res), mimetype='application/json')
+    total_games = np.sum([int(d['games']) for d in data])
+    preference = sorted(data, key=lambda x: x['games'], reverse=True)[:int(top_p)]
     preference = list(filter(lambda x: x['games'], preference))
     for x in preference:
         x['localized_name'] = rawid2hero[int(x['hero_id'])]['localized_name']
-    
-    rec_res = rec.recommend(data, 3)
-    player_res = rec.get_sim_users(data, 3)
+        x['win_rate'] = '{:.2%}'.format(float(x['win']) / float(x['games']))
+        x['preference_factor'] = '{:.2f}'.format(float(x['games']) / total_games)
+    rec_res = rec.recommend(data, top_r)
+    player_res = rec.get_sim_users(data, top_s)
 
     res = {
         "preference": preference,
