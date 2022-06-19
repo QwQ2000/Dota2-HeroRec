@@ -3,8 +3,10 @@ from flask_cors import CORS
 import requests
 import json
 import pickle as pkl
-from recsys import CFRecommender
+from recsys import CFRecommender, ACFRecommender
+from model import ACF4HeroRec
 import numpy as np
+import torch
 
 app = Flask(__name__)
 CORS(app, supports_credentials=True)
@@ -13,8 +15,12 @@ with open('../rawid2hero.pkl', 'rb') as f:
     rawid2hero = pkl.load(f)
 with open('../player_composed.pkl', 'rb') as f:
     player_list = pkl.load(f)
-
-rec = CFRecommender(player_list, rawid2hero)
+kg_embed = np.load('../kg_embed.npy')
+model = ACF4HeroRec(25, kg_embed)
+model.load_state_dict(torch.load('ckpts/30.pth'))
+model = model.cuda()
+rec = ACFRecommender(player_list, rawid2hero, model)
+#rec = CFRecommender(player_list, rawid2hero)
 
 @app.route('/get_result', methods=['GET', 'POST'])
 def get_result(): 

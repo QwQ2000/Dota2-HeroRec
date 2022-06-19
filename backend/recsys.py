@@ -1,5 +1,7 @@
 import abc
 import numpy as np
+from utils import *
+import torch
 
 class Recommender(metaclass=abc.ABCMeta):
     @abc.abstractmethod
@@ -22,40 +24,15 @@ class CFRecommender(Recommender):
         rows = []
         for info, records in player_data:
             self.player_info.append(info)
-            rows.append(self.__vectorize(records))
+            rows.append(vectorize(self.rawid2id, records))
         self.m = np.array(rows)
-
-    def __to_freq_vector(self, user_data):
-        x = np.zeros(len(self.id2rawid))
-        for hero_record in user_data:
-            rawid = int(hero_record['hero_id'])
-            x[self.rawid2id[rawid]] = hero_record['games']
-        return x
-    
-    def __to_score_vector(self, v):
-        x = v.copy()
-        ratio = [0.4, 0.7, 0.9]
-        pos = list(map(lambda z: int(x.shape[0] * z), ratio))
-        sorted_idx = np.argsort(x)
-        for j in sorted_idx[:pos[0]]:
-            x[j] = 0
-        for j in sorted_idx[pos[0]:pos[1]]:
-            x[j] = 0.33
-        for j in sorted_idx[pos[1]:pos[2]]:
-            x[j] = 0.67
-        for j in sorted_idx[pos[2]:]:
-            x[j] = 1
-        return x
-
-    def __vectorize(self, user_data):
-        return self.__to_score_vector(self.__to_freq_vector(user_data))
     
     def __cos_sim(self, v1, v2):
         return np.sum(v1 * v2) / np.sqrt(np.sum(v1 * v1) * np.sum(v2 * v2))
 
     def recommend(self, user_data, top_n):
-        freq = self.__to_freq_vector(user_data)
-        score = self.__to_score_vector(freq)
+        freq = data2freq(self.rawid2id, user_data)
+        score = freq2score(freq)
         weight = freq / np.sum(freq)
 
         most_idx = np.where(score == 1)[0]
@@ -66,8 +43,30 @@ class CFRecommender(Recommender):
         return list(map(lambda x: self.rawid2hero[self.id2rawid[x]], selected_idx))               
     
     def get_sim_users(self, user_data, top_n):
-        u = self.__vectorize(user_data)
+        u = vectorize(self.rawid2id, user_data)
         selected_idx = sorted([i for i in range(self.m.shape[0])], 
                               key=lambda x: self.__cos_sim(u, self.m[x]),
                               reverse=True)[:top_n]
         return list(map(lambda x: self.player_info[x], selected_idx))
+
+class ACFRecommender(CFRecommender):
+    def __init__(self, player_data, rawid2hero, acf_model):
+        super().__init__(player_data, rawid2hero)
+
+        self.model = acf_model
+        self.device = next(self.model.parameters()).device
+        self.model.eval()
+        self.user_vec = self.model.forward_user()
+
+    def recommend(self, user_data, top_n):
+        score = vectorize(self.rawid2id, user_data)
+        least_idx = np.where(score == 0)[0]
+        
+        u = torch.Tensor(score).unsqueeze(0).repeat(len(least_idx), 1).to(self.device)
+        i = torch.stack([torch.LongTensor([idx]) for idx in least_idx]).to(self.device)
+        pred = self.model(u, i).cpu().detach().numpy()
+
+        selected_pairs = sorted(zip(least_idx, pred), 
+                              key=lambda x: x[1], 
+                              reverse=True)[:top_n]
+        return list(map(lambda x: self.rawid2hero[self.id2rawid[x[0]]], selected_pairs))   

@@ -2,3 +2,5 @@ node_modules
 *.pkl
 __pycache__
 .ipynb_checkpoints
+*.npy
+*.pth
