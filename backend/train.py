@@ -12,7 +12,7 @@ with open('../player_composed.pkl', 'rb') as f:
     pd = pkl.load(f)
 
 dataset = HeroRecDataset(pd, r)
-train_size = int(len(dataset) * 0.6)
+train_size = int(len(dataset) * 0.7)
 val_size = len(dataset) - train_size
 trainset, valset = random_split(dataset, [train_size, val_size])
 
@@ -25,7 +25,7 @@ train_loader = DataLoader(trainset, batch_size=32, shuffle=True, pin_memory=True
 #train_loader = DataLoader(dataset, batch_size=32, shuffle=True, pin_memory=True)
 val_loader = DataLoader(valset, batch_size=1)
 
-train_epoch = 50
+train_epoch = 100
 val_interval = 1
 
 def train():
@@ -47,7 +47,7 @@ def train():
                                                                                       np.mean(losses), 
                                                                                       *validate()))
             #print('Epoch {}: mean_train_rmse={}'.format(epoch, np.mean(losses)))
-            torch.save(model.state_dict(), 'ckpts/t{}.pth'.format(epoch))
+            torch.save(model.state_dict(), 'ckpts/70train_05score_{}.pth'.format(epoch))
     return model
 
 def validate():

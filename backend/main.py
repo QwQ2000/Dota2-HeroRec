@@ -17,7 +17,7 @@ with open('../player_composed.pkl', 'rb') as f:
     player_list = pkl.load(f)
 kg_embed = np.load('../kg_embed.npy')
 model = ACF4HeroRec(25, kg_embed)
-model.load_state_dict(torch.load('ckpts/30.pth'))
+model.load_state_dict(torch.load('ckpts/50.pth'))
 model = model.cuda()
 rec = ACFRecommender(player_list, rawid2hero, model)
 #rec = CFRecommender(player_list, rawid2hero)
@@ -26,7 +26,7 @@ rec = ACFRecommender(player_list, rawid2hero, model)
 def get_result(): 
     uid = request.args.get('uid')
     top_p, top_r, top_s = int(request.args.get('top_p')), int(request.args.get('top_r')), int(request.args.get('top_s'))
-    data = eval(requests.get('https://api.opendota.com/api/players/{}/heroes'.format(uid)).text)
+    data = eval(requests.get('https://api.opendota.com/api/players/{}/heroes'.format(uid)).text)   
     if not len(data):
         res = {
             "preference": [],

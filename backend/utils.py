@@ -9,7 +9,7 @@ def data2freq(rawid2id, user_data):
 
 def freq2score(v):
     x = v.copy()
-    ratio = [0.5, 0.7, 0.9]
+    ratio = [0.4, 0.7, 0.9]
     pos = list(map(lambda z: int(x.shape[0] * z), ratio))
     sorted_idx = np.argsort(x)
     for j in sorted_idx[:pos[0]]:
