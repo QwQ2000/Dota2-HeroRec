@@ -47,7 +47,7 @@ def train():
                                                                                       np.mean(losses), 
                                                                                       *validate()))
             #print('Epoch {}: mean_train_rmse={}'.format(epoch, np.mean(losses)))
-            torch.save(model.state_dict(), 'ckpts/70train_05score_{}.pth'.format(epoch))
+            torch.save(model.state_dict(), 'ckpts/{}.pth'.format(epoch))
     return model
 
 def validate():
